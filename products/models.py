@@ -1,9 +1,9 @@
 from decimal import Decimal
-
-from django.core.validators import MinValueValidator
 from django.db import models
-
+from django.core.validators import MinValueValidator
 from .validators import validate_product_name
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 
 
 class Category(models.Model):
@@ -143,3 +143,24 @@ class ExpensiveProduct(Product):
         ordering = ["-price"]
         verbose_name = "Expensive Product"
         verbose_name_plural = "Expensive Products"
+
+
+class ActivityLog(models.Model):
+    action = models.CharField(max_length=255)
+
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+    )
+
+    object_id = models.PositiveIntegerField()
+
+    content_object = GenericForeignKey(
+        "content_type",
+        "object_id",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.action
