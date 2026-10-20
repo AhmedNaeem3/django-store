@@ -22,3 +22,41 @@ staticfiles/
 # Editors and operating system
 .vscode/
 .DS_Store
+
+
+
+from rest_framework import status
+
+from .serializers import ProductSerializer
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+
+  path(
+        "api/",
+        views.product_list_api,
+        name="product_list_api"
+    ),
+    path(
+        "api/<int:product_id>/",
+        views.product_detail_api,
+        name="api_product_detail",
+    ),
+
+@api_view(["GET"])
+def product_list_api(request):
+    products = Product.objects.all()
+    serializer = ProductSerializer(products, many=True)
+    return Response(serializer.data)
+
+
+@api_view(["GET"])
+def product_detail_api(request, product_id):
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return Response(
+            {"error": "Product not found"}, status=status.HTTP_404_NOT_FOUND
+        )
+
+    serializer = ProductSerializer(product)
+    return Response(serializer.data)
