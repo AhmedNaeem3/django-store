@@ -1,8 +1,156 @@
 from .models import Product
 from .forms import ProductForm
+from rest_framework import status
 from django.http import HttpResponse
+from django.contrib.auth import login
+from rest_framework.views import APIView
+from .serializers import ProductSerializer
+from rest_framework.response import Response
+from django.shortcuts import render, redirect
+from rest_framework.decorators import api_view
+from rest_framework.viewsets import ModelViewSet
+from django.contrib.auth.forms import AuthenticationForm
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import TemplateView, ListView, DetailView
+
+from rest_framework.generics import (
+    ListAPIView,
+    CreateAPIView,
+    RetrieveAPIView,
+    UpdateAPIView,
+    DestroyAPIView,
+)
+
+
+@api_view(["GET"])
+def product_list_api(request):
+    products = Product.objects.all()
+    serializer = ProductSerializer(products, many=True)
+    return Response(serializer.data)
+
+
+@api_view(["GET"])
+def product_detail_api(request, product_id):
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return Response(
+            {"error": "Product not found"}, status=status.HTTP_404_NOT_FOUND
+        )
+
+    serializer = ProductSerializer(product)
+    return Response(serializer.data)
+
+
+@api_view(["POST"])
+def product_create_api(request):
+    serializer = ProductSerializer(data=request.data)
+
+    serializer.is_valid(raise_exception=True)
+
+    serializer.save()
+
+    return Response(
+        serializer.data,
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["PUT", "PATCH"])
+def product_update_api(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+
+    serializer = ProductSerializer(
+        instance=product,
+        data=request.data,
+        partial=request.method == "PATCH",
+    )
+
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+def login_view(request):
+    if request.method == "POST":
+        form = AuthenticationForm(request, data=request.POST)
+
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            return redirect("/api/products/")
+    else:
+        form = AuthenticationForm()
+
+    return render(request, "products/login.html", {"form": form})
+
+
+class ProductAPIView(APIView):
+
+    def get(self, request):
+        data = {
+            "message": "Hello from APIView",
+            "method": request.method,
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = ProductSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ProductListGenericView(ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+
+class ProductCreateGenericView(CreateAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+
+class ProductRetrieveGenericView(RetrieveAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+
+class ProductUpdateGenericView(UpdateAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+
+class ProductDeleteGenericView(DestroyAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+
+class ProductViewSet(ModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    # filter_backends = [SearchFilter, OrderingFilter]
+    filter_backends = [
+        DjangoFilterBackend,
+        SearchFilter,
+        OrderingFilter,
+    ]
+
+    filterset_fields = ["status", "price", "stock", "category"]
+    search_fields = ["name", "description", "category__name"]
+    ordering_fields = ["name", "price", "stock"]
+    ordering = ["name"]
 
 
 class StoreHomeView(TemplateView):
