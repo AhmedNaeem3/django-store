@@ -26,4 +26,17 @@ urlpatterns = [
         views.product_create,
         name="product_create",
     ),
+    path("api/", views.product_list_api, name="api_product_list"),
+    path(
+        "api/<int:product_id>/",
+        views.product_detail_api,
+        name="api_product_detail",
+    ),
+    path("api/create/", views.product_create_api, name="api_product_create"),
+    path(
+        "api/<int:product_id>/update/",
+        views.product_update_api,
+        name="api_product_update",
+    ),
+    path("login/", views.login_view, name="login"),
 ]
