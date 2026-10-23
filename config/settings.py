@@ -31,6 +31,9 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/1"
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -43,6 +46,7 @@ INSTALLED_APPS = [
     "products",
     "rest_framework",
     "django_filters",
+    "rest_framework_simplejwt.token_blacklist",
 ]
 
 MIDDLEWARE = [
@@ -68,6 +72,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": ("rest_framework.pagination.PageNumberPagination"),
     "PAGE_SIZE": 10,
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.BasicAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
@@ -163,6 +168,16 @@ STATIC_URL = "static/"
 
 MAILERS = {
     "default": {
-        "BACKEND": "django.core.mail.backends.console.EmailBackend",
+        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+        "OPTIONS": {
+            "host": "smtp.gmail.com",
+            "port": 587,
+            "use_tls": True,
+            "username": os.environ["EMAIL_HOST_USER"],
+            "password": os.environ["EMAIL_HOST_PASSWORD"],
+            "timeout": 10,
+        },
     },
 }
+
+DEFAULT_FROM_EMAIL = os.environ["DEFAULT_FROM_EMAIL"]

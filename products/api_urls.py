@@ -1,7 +1,6 @@
 from rest_framework.routers import DefaultRouter
 from .views import ProductViewSet
 from django.urls import path
-
 from . import views
 
 router = DefaultRouter()
@@ -35,5 +34,25 @@ urlpatterns = [
         "products-delete/<int:pk>/",
         views.ProductDeleteGenericView.as_view(),
         name="product-delete-generic",
+    ),
+    path(
+        "products-mixin/",
+        views.ProductListCreateMixinView.as_view(),
+        name="product-list-create-mixin",
+    ),
+    path(
+        "products-rud-mixin/<int:pk>/",
+        views.ProductRetrieveUpdateDestroyMixinView.as_view(),
+        name="product-rud-mixin",
+    ),
+    path(
+        "products-rud-generic/<int:pk>/",
+        views.ProductRetrieveUpdateDestroyGenericView.as_view(),
+        name="product-rud-generic",
+    ),
+    path(
+        "register/",
+        views.UserRegistrationView.as_view(),
+        name="user-register",
     ),
 ] + router.urls
