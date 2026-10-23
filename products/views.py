@@ -1,10 +1,10 @@
 from .models import Product
 from .forms import ProductForm
-from rest_framework import status
 from django.http import HttpResponse
 from django.contrib.auth import login
 from rest_framework.views import APIView
-from .serializers import ProductSerializer
+from rest_framework import status, mixins
+from .serializers import ProductSerializer, UserRegistrationSerializer
 from rest_framework.response import Response
 from django.shortcuts import render, redirect
 from rest_framework.decorators import api_view
@@ -12,7 +12,13 @@ from rest_framework.viewsets import ModelViewSet
 from django.contrib.auth.forms import AuthenticationForm
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import (
+    IsAuthenticatedOrReadOnly,
+    AllowAny,
+    IsAuthenticated,
+)
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import TemplateView, ListView, DetailView
 
@@ -22,6 +28,8 @@ from rest_framework.generics import (
     RetrieveAPIView,
     UpdateAPIView,
     DestroyAPIView,
+    GenericAPIView,
+    RetrieveUpdateDestroyAPIView,
 )
 
 
@@ -135,6 +143,44 @@ class ProductDeleteGenericView(DestroyAPIView):
     serializer_class = ProductSerializer
 
 
+class ProductRetrieveUpdateDestroyGenericView(RetrieveUpdateDestroyAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+
+class UserRegistrationView(CreateAPIView):
+    serializer_class = UserRegistrationSerializer
+    permission_classes = [AllowAny]
+
+
+class LogoutAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        refresh_token = request.data.get("refresh")
+
+        if not refresh_token:
+            return Response(
+                {"error": "Refresh token is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
+            return Response(
+                {"message": "Successfully logged out."},
+                status=status.HTTP_205_RESET_CONTENT,
+            )
+
+        except TokenError:
+            return Response(
+                {"error": "Invalid or blacklisted refresh token."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
 class ProductViewSet(ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
@@ -151,6 +197,43 @@ class ProductViewSet(ModelViewSet):
     search_fields = ["name", "description", "category__name"]
     ordering_fields = ["name", "price", "stock"]
     ordering = ["name"]
+
+
+class ProductListCreateMixinView(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    GenericAPIView,
+):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+
+class ProductRetrieveUpdateDestroyMixinView(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    GenericAPIView,
+):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.retrieve(request, *args, **kwargs)
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def patch(self, request, *args, **kwargs):
+        return self.partial_update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
 
 
 class StoreHomeView(TemplateView):
