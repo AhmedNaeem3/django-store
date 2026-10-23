@@ -1,5 +1,6 @@
 from .models import Product
 from .forms import ProductForm
+from django.core.cache import cache
 from django.http import HttpResponse
 from django.contrib.auth import login
 from rest_framework.views import APIView
@@ -197,6 +198,46 @@ class ProductViewSet(ModelViewSet):
     search_fields = ["name", "description", "category__name"]
     ordering_fields = ["name", "price", "stock"]
     ordering = ["name"]
+
+    def list(self, request, *args, **kwargs):
+        cache_key = f"product-list:{request.get_full_path()}"
+
+        cached_data = cache.get(cache_key)
+
+        if cached_data is not None:
+            return Response(cached_data)
+
+        response = super().list(request, *args, **kwargs)
+
+        cache.set(cache_key, response.data, timeout=60)
+
+        return response
+
+    def retrieve(self, request, *args, **kwargs):
+        cache_key = f"product-detail:{kwargs.get('pk')}"
+        cached_data = cache.get(cache_key)
+
+        if cached_data is not None:
+            return Response(cached_data)
+
+        response = super().retrieve(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=60)
+        return response
+
+    def perform_create(self, serializer):
+        serializer.save()
+        cache.delete_pattern("product-list:*")
+        cache.delete_pattern("product-detail:*")
+
+    def perform_update(self, serializer):
+        serializer.save()
+        cache.delete_pattern("product-list:*")
+        cache.delete_pattern("product-detail:*")
+
+    def perform_destroy(self, instance):
+        instance.delete()
+        cache.delete_pattern("product-list:*")
+        cache.delete_pattern("product-detail:*")
 
 
 class ProductListCreateMixinView(

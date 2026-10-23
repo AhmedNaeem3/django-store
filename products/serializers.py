@@ -4,6 +4,7 @@ from .validators import validate_price_and_stock
 from django.core.exceptions import ValidationError
 from .models import Product, Category, Tag, ProductDetail
 from django.contrib.auth.models import User
+from products.tasks import send_welcome_email
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -50,8 +51,13 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         fields = ["id", "username", "email", "password"]
         read_only_fields = ["id"]
 
+    @transaction.atomic
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
+
+        transaction.on_commit(
+            lambda: send_welcome_email.delay(user.email, user.username)
+        )
         return user
 
 
