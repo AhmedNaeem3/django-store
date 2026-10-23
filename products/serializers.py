@@ -3,6 +3,7 @@ from rest_framework import serializers
 from .validators import validate_price_and_stock
 from django.core.exceptions import ValidationError
 from .models import Product, Category, Tag, ProductDetail
+from django.contrib.auth.models import User
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -39,6 +40,19 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 #             "tags",
 #             "detail",
 #         ]
+
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "email", "password"]
+        read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        user = User.objects.create_user(**validated_data)
+        return user
 
 
 class ProductSerializer(serializers.ModelSerializer):
